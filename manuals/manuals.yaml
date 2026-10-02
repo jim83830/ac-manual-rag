@@ -1,0 +1,4 @@
+# 每本說明書一項。doc_id 只能用小寫英文、數字和 -
+- file: 客廳冷氣.pdf
+  doc_id: living-room-ac
+  name: 客廳冷氣
