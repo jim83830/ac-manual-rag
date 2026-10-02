@@ -21,6 +21,7 @@
 | 實作方式 | 手寫管線 + 輕量套件（`openai` SDK、`chromadb`、`gradio`、`pypdfium2`），**不用** LangChain / LlamaIndex | 每一步看得懂、改得動 |
 | 評估 | 測試題庫（約 15 題），量化檢索命中率與拒答正確率 | 調參時有依據 |
 | 打包 | Docker + docker compose | 使用者想熟悉 Docker；HF Spaces 支援 Docker 部署 |
+| 公開性 | **說明書 PDF 不進 git**（`.gitignore` 排除 `*.pdf`）；程式、`manuals.yaml`、`eval/questions.yaml` 可 commit 當範例；程式不寫死任何特定機型的內容 | PDF 版權屬廠商；一旦 commit 會永久留在歷史。保留日後公開 repo 當「掃描版說明書 RAG 範本」的彈性 |
 
 具體模型型號（視覺、embedding、reranker、chat）在實作時到 build.nvidia.com 確認目前可用清單後填入設定檔；embedding 需支援中文，chat 優先選中文表現好的模型。
 

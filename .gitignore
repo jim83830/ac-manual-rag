@@ -1,6 +1,9 @@
 # secrets
 .env
 
+# 說明書 PDF 版權屬廠商，不進 git（manuals.yaml 可 commit 當範例）
+*.pdf
+
 # ingest 產出（可由 manuals/ 重新產生）
 data/
 
