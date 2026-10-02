@@ -1,0 +1,35 @@
+# 三個 service 共用同一個 image，只差啟動指令
+x-app: &app
+  build: .
+  image: ac-manual-rag:dev
+  # required: false → 還沒建 .env 時 compose 照樣能用；程式啟動時才會提示缺 API key
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - ./manuals:/app/manuals
+    - ./data:/app/data
+    - ./eval:/app/eval
+
+services:
+  # 常駐：docker compose up app
+  app:
+    <<: *app
+    ports:
+      - "7860:7860"
+
+  # 一次性：docker compose run --rm ingest [--force] [--doc DOC_ID]
+  ingest:
+    <<: *app
+    entrypoint: ["python", "ingest.py"]
+    profiles: ["tools"]
+
+  # 測試：docker compose run --rm test [pytest 參數]
+  # 掛載整個專案，改程式碼不用重 build
+  test:
+    build: .
+    image: ac-manual-rag:dev
+    volumes:
+      - .:/app
+    entrypoint: ["pytest"]
+    profiles: ["tools"]
