@@ -1,0 +1,10 @@
+# secrets
+.env
+
+# ingest 產出（可由 manuals/ 重新產生）
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
