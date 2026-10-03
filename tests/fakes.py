@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 
+from PIL import Image, ImageDraw
+
 from rag.llm import LLMError
 
 
@@ -52,3 +54,14 @@ class FakeLLM:
         if self.rankings is not None:
             return self.rankings
         return [(i, 5.0 - i) for i in range(len(passages))]
+
+
+def make_pdf(path, pages):
+    """產生測試用 PDF：pages 中 True 表示有內容的頁面，False 表示空白頁。"""
+    images = []
+    for has_content in pages:
+        image = Image.new("RGB", (595, 842), "white")
+        if has_content:
+            ImageDraw.Draw(image).rectangle((100, 100, 400, 300), fill="black")
+        images.append(image)
+    images[0].save(path, save_all=True, append_images=images[1:])
