@@ -1,3 +1,4 @@
+import dataclasses
 import json
 from types import SimpleNamespace
 
@@ -111,6 +112,35 @@ def test_openai_errors_become_llm_error(settings):
     client = make_client(settings, openai_client=fake)
     with pytest.raises(LLMError):
         client.chat([{"role": "user", "content": "hi"}])
+
+
+def test_chat_sends_reasoning_effort(settings):
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        if kwargs.get("stream"):
+            return iter([])
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="好"))])
+
+    fake = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    client = make_client(settings, openai_client=fake)
+    assert client.chat([{"role": "user", "content": "hi"}]) == "好"
+    list(client.chat_stream([{"role": "user", "content": "hi"}]))
+    assert [c["extra_body"] for c in calls] == [{"reasoning_effort": "low"}] * 2
+
+
+def test_reasoning_effort_can_be_disabled(settings):
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="好"))])
+
+    fake = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    client = make_client(dataclasses.replace(settings, chat_reasoning_effort=""), openai_client=fake)
+    client.chat([{"role": "user", "content": "hi"}])
+    assert calls[0]["extra_body"] is None
 
 
 def test_min_interval_spaces_out_calls(settings):

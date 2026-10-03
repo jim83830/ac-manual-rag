@@ -35,6 +35,12 @@ def test_env_overrides():
     assert (s.chat_model, s.chunk_strategy, s.rerank_threshold, s.retrieve_k) == ("x/y", "page", 0.5, 5)
 
 
+def test_reasoning_effort_override_and_disable():
+    assert load_settings({"NVIDIA_API_KEY": "k"}).chat_reasoning_effort == "low"
+    assert load_settings({"NVIDIA_API_KEY": "k", "CHAT_REASONING_EFFORT": "medium"}).chat_reasoning_effort == "medium"
+    assert load_settings({"NVIDIA_API_KEY": "k", "CHAT_REASONING_EFFORT": "off"}).chat_reasoning_effort == ""
+
+
 def test_invalid_values_raise():
     with pytest.raises(ConfigError, match="CHUNK_STRATEGY"):
         load_settings({"NVIDIA_API_KEY": "k", "CHUNK_STRATEGY": "bogus"})

@@ -26,11 +26,13 @@ class Settings:
     api_key: str
     base_url: str = "https://integrate.api.nvidia.com/v1"
     vision_model: str = "meta/llama-3.2-90b-vision-instruct"
-    chat_model: str = "meta/llama-3.3-70b-instruct"
-    embed_model: str = "nvidia/llama-3.2-nv-embedqa-1b-v2"
-    rerank_model: str = "nvidia/llama-3.2-nv-rerankqa-1b-v2"
+    chat_model: str = "z-ai/glm-5.3-flash"
+    # 推理型聊天模型的思考量；"low" 讓它少想一點、快一點。空字串＝不送這個參數
+    chat_reasoning_effort: str = "low"
+    embed_model: str = "nvidia/nemotron-3-embed-1b"
+    rerank_model: str = "nvidia/llama-nemotron-rerank-vl-1b-v2"
     rerank_url: str = (
-        "https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-3_2-nv-rerankqa-1b-v2/reranking"
+        "https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-vl-1b-v2/reranking"
     )
     manuals_dir: Path = Path("manuals")
     data_dir: Path = Path("data")
@@ -41,7 +43,7 @@ class Settings:
     chunk_max_chars: int = 800
     retrieve_k: int = 10
     rerank_k: int = 3
-    rerank_threshold: float = -1.0
+    rerank_threshold: float = -4.0  # 暫定：此 reranker 分數偏負，Task 13 用 eval 精調
     ingest_min_interval: float = 1.5  # 免費額度約 40 次/分鐘
 
     @property
@@ -92,6 +94,9 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
                 values[field_name] = float(env[var])
             except ValueError:
                 raise ConfigError(f"{var} 必須是數字，目前是 {env[var]!r}") from None
+    effort = env.get("CHAT_REASONING_EFFORT", "").strip()
+    if effort:
+        values["chat_reasoning_effort"] = "" if effort.lower() == "off" else effort
     settings = Settings(**values)
     if settings.chunk_strategy not in CHUNK_STRATEGIES:
         raise ConfigError(

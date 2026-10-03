@@ -64,13 +64,24 @@ class NvidiaClient:
         return self._complete(self._s.vision_model, messages, max_tokens=4096, temperature=0.0)
 
     def chat(self, messages: list[dict], max_tokens: int = 1024) -> str:
-        return self._complete(self._s.chat_model, messages, max_tokens=max_tokens, temperature=0.2)
+        return self._complete(
+            self._s.chat_model, messages, max_tokens=max_tokens, temperature=0.2, extra_body=self._chat_extra_body()
+        )
+
+    def _chat_extra_body(self) -> dict | None:
+        effort = self._s.chat_reasoning_effort
+        return {"reasoning_effort": effort} if effort else None
 
     def chat_stream(self, messages: list[dict], max_tokens: int = 1024) -> Iterator[str]:
         self._throttle()
         try:
             stream = self._openai.chat.completions.create(
-                model=self._s.chat_model, messages=messages, max_tokens=max_tokens, temperature=0.2, stream=True
+                model=self._s.chat_model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.2,
+                stream=True,
+                extra_body=self._chat_extra_body(),
             )
             for event in stream:
                 if event.choices and event.choices[0].delta.content:
@@ -78,11 +89,13 @@ class NvidiaClient:
         except OpenAIError as exc:
             raise LLMError(f"聊天模型呼叫失敗：{exc}") from exc
 
-    def _complete(self, model: str, messages: list[dict], *, max_tokens: int, temperature: float) -> str:
+    def _complete(
+        self, model: str, messages: list[dict], *, max_tokens: int, temperature: float, extra_body: dict | None = None
+    ) -> str:
         self._throttle()
         try:
             response = self._openai.chat.completions.create(
-                model=model, messages=messages, max_tokens=max_tokens, temperature=temperature
+                model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, extra_body=extra_body
             )
         except OpenAIError as exc:
             raise LLMError(f"模型 {model} 呼叫失敗：{exc}") from exc

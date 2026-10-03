@@ -23,7 +23,11 @@ def sample_image() -> bytes:
 
 def check(name, fn) -> bool:
     try:
-        print(f"✅ {name}：{fn()}")
+        result = fn()
+        if not result:
+            print(f"❌ {name}：回傳空白（推理型模型可能把 token 都用在思考上）")
+            return False
+        print(f"✅ {name}：{result}")
         return True
     except LLMError as exc:
         print(f"❌ {name}：{exc}")
