@@ -44,6 +44,8 @@ class Settings:
     ocr_jpeg_quality: int = 85
     ocr_timeout: float = 360.0  # 視覺模型一頁可能要 3～4 分鐘
     ocr_workers: int = 4  # 同時送出幾頁 OCR；瓶頸是等回應，不是限流
+    # OCR 失敗不重試：重試也會吃每日額度，失敗的頁面重跑 ingest 就會補做
+    ocr_max_retries: int = 0
     chunk_strategy: str = "heading"
     chunk_max_chars: int = 800
     retrieve_k: int = 10
@@ -79,6 +81,7 @@ _INT_ENV = {
     "retrieve_k": "RETRIEVE_K",
     "rerank_k": "RERANK_K",
     "ocr_workers": "OCR_WORKERS",
+    "ocr_max_retries": "OCR_MAX_RETRIES",
 }
 _FLOAT_ENV = {"rerank_threshold": "RERANK_THRESHOLD", "ingest_min_interval": "INGEST_MIN_INTERVAL"}
 

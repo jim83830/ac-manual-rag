@@ -151,7 +151,7 @@ def test_ocr_uses_longer_timeout(settings):
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="頁碼：9"))])
 
     fake = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    client = make_client(settings, openai_client=fake)
+    client = NvidiaClient(settings, openai_client=SimpleNamespace(), vision_client=fake, http_client=httpx.Client())
     assert client.ocr_page(b"jpeg", "prompt") == "頁碼：9"
     assert calls[0]["model"] == settings.vision_model
     assert calls[0]["timeout"] == settings.ocr_timeout
@@ -186,6 +186,7 @@ def test_vision_client_built_from_vision_settings(settings):
     client = NvidiaClient(custom, openai_client=SimpleNamespace(), http_client=httpx.Client())
     assert str(client._vision.base_url) == "https://vision.example/v1/"
     assert client._vision.api_key == "vision-key"
+    assert client._vision.max_retries == custom.ocr_max_retries
 
 
 def test_list_models_can_query_vision_provider(settings):
@@ -199,10 +200,11 @@ def test_list_models_can_query_vision_provider(settings):
     assert client.list_models(vision=True) == ["gemini-x"]
 
 
-def test_vision_client_defaults_to_main_client(settings):
-    main = SimpleNamespace()
-    client = NvidiaClient(settings, openai_client=main, http_client=httpx.Client())
-    assert client._vision is main
+def test_vision_client_defaults_to_main_provider_without_retries(settings):
+    client = NvidiaClient(settings, openai_client=SimpleNamespace(), http_client=httpx.Client())
+    assert str(client._vision.base_url).rstrip("/") == settings.base_url.rstrip("/")
+    assert client._vision.api_key == settings.api_key
+    assert client._vision.max_retries == 0  # OCR 預設不重試：失敗的頁面留給下次 ingest 補做
 
 
 def test_min_interval_spaces_out_calls(settings):

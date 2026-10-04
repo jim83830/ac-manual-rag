@@ -37,18 +37,13 @@ class NvidiaClient:
         self._openai = openai_client or OpenAI(
             base_url=settings.base_url, api_key=settings.api_key, max_retries=5, timeout=120
         )
-        # OCR 可以走另一個平台；沒設定就跟其他模型共用同一個 client
-        if vision_client is not None:
-            self._vision = vision_client
-        elif settings.vision_base_url:
-            self._vision = OpenAI(
-                base_url=settings.vision_base_url,
-                api_key=settings.vision_api_key or settings.api_key,
-                max_retries=5,
-                timeout=120,
-            )
-        else:
-            self._vision = self._openai
+        # OCR 用自己的 client：可以走另一個平台（沒設定就用同一個平台），重試次數也獨立設定
+        self._vision = vision_client or OpenAI(
+            base_url=settings.vision_base_url or settings.base_url,
+            api_key=settings.vision_api_key or settings.api_key,
+            max_retries=settings.ocr_max_retries,
+            timeout=120,
+        )
         self._http = http_client or httpx.Client(timeout=60)
         self._min_interval = min_interval
         self._sleep = sleep

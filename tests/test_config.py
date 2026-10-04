@@ -74,6 +74,11 @@ def test_repr_hides_api_keys():
     assert "gemini-secret" not in repr(s)
 
 
+def test_ocr_max_retries_default_and_override():
+    assert load_settings({"NVIDIA_API_KEY": "k"}).ocr_max_retries == 0
+    assert load_settings({"NVIDIA_API_KEY": "k", "OCR_MAX_RETRIES": "2"}).ocr_max_retries == 2
+
+
 def test_invalid_values_raise():
     with pytest.raises(ConfigError, match="CHUNK_STRATEGY"):
         load_settings({"NVIDIA_API_KEY": "k", "CHUNK_STRATEGY": "bogus"})
