@@ -63,6 +63,17 @@ def test_vision_provider_override():
     )
 
 
+def test_ingest_min_interval_override():
+    assert load_settings({"NVIDIA_API_KEY": "k"}).ingest_min_interval == 1.5
+    assert load_settings({"NVIDIA_API_KEY": "k", "INGEST_MIN_INTERVAL": "13"}).ingest_min_interval == 13.0
+
+
+def test_repr_hides_api_keys():
+    s = load_settings({"NVIDIA_API_KEY": "nvapi-secret", "VISION_API_KEY": "gemini-secret"})
+    assert "nvapi-secret" not in repr(s)
+    assert "gemini-secret" not in repr(s)
+
+
 def test_invalid_values_raise():
     with pytest.raises(ConfigError, match="CHUNK_STRATEGY"):
         load_settings({"NVIDIA_API_KEY": "k", "CHUNK_STRATEGY": "bogus"})

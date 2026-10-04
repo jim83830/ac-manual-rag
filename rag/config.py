@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 CHUNK_STRATEGIES = ("heading", "page", "fixed")
@@ -23,12 +23,12 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True)
 class Settings:
-    api_key: str
+    api_key: str = field(repr=False)  # repr=False：印出設定時不會洩漏 key
     base_url: str = "https://integrate.api.nvidia.com/v1"
     vision_model: str = "google/gemma-4-31b-it"
     # OCR 可改用其他 OpenAI 相容平台（例如 Google Gemini）；空字串＝沿用 base_url / api_key
     vision_base_url: str = ""
-    vision_api_key: str = ""
+    vision_api_key: str = field(default="", repr=False)
     chat_model: str = "z-ai/glm-5.3-flash"
     # 推理型聊天模型的思考量；"low" 讓它少想一點、快一點。空字串＝不送這個參數
     chat_reasoning_effort: str = "low"
@@ -80,7 +80,7 @@ _INT_ENV = {
     "rerank_k": "RERANK_K",
     "ocr_workers": "OCR_WORKERS",
 }
-_FLOAT_ENV = {"rerank_threshold": "RERANK_THRESHOLD"}
+_FLOAT_ENV = {"rerank_threshold": "RERANK_THRESHOLD", "ingest_min_interval": "INGEST_MIN_INTERVAL"}
 
 
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
