@@ -61,7 +61,9 @@ class NvidiaClient:
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
             ],
         }]
-        return self._complete(self._s.vision_model, messages, max_tokens=4096, temperature=0.0)
+        return self._complete(
+            self._s.vision_model, messages, max_tokens=4096, temperature=0.0, timeout=self._s.ocr_timeout
+        )
 
     def chat(self, messages: list[dict], max_tokens: int = 1024) -> str:
         return self._complete(
@@ -90,12 +92,25 @@ class NvidiaClient:
             raise LLMError(f"聊天模型呼叫失敗：{exc}") from exc
 
     def _complete(
-        self, model: str, messages: list[dict], *, max_tokens: int, temperature: float, extra_body: dict | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        *,
+        max_tokens: int,
+        temperature: float,
+        extra_body: dict | None = None,
+        timeout: float | None = None,
     ) -> str:
         self._throttle()
+        options = {"timeout": timeout} if timeout else {}
         try:
             response = self._openai.chat.completions.create(
-                model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, extra_body=extra_body
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                extra_body=extra_body,
+                **options,
             )
         except OpenAIError as exc:
             raise LLMError(f"模型 {model} 呼叫失敗：{exc}") from exc

@@ -25,7 +25,7 @@ class ConfigError(Exception):
 class Settings:
     api_key: str
     base_url: str = "https://integrate.api.nvidia.com/v1"
-    vision_model: str = "meta/llama-3.2-90b-vision-instruct"
+    vision_model: str = "google/gemma-4-31b-it"
     chat_model: str = "z-ai/glm-5.3-flash"
     # 推理型聊天模型的思考量；"low" 讓它少想一點、快一點。空字串＝不送這個參數
     chat_reasoning_effort: str = "low"
@@ -39,6 +39,7 @@ class Settings:
     render_dpi: int = 150
     ocr_max_side: int = 1600
     ocr_jpeg_quality: int = 85
+    ocr_timeout: float = 360.0  # 視覺模型一頁可能要 3～4 分鐘
     chunk_strategy: str = "heading"
     chunk_max_chars: int = 800
     retrieve_k: int = 10
