@@ -41,6 +41,11 @@ def test_reasoning_effort_override_and_disable():
     assert load_settings({"NVIDIA_API_KEY": "k", "CHAT_REASONING_EFFORT": "off"}).chat_reasoning_effort == ""
 
 
+def test_ocr_workers_default_and_override():
+    assert load_settings({"NVIDIA_API_KEY": "k"}).ocr_workers == 4
+    assert load_settings({"NVIDIA_API_KEY": "k", "OCR_WORKERS": "2"}).ocr_workers == 2
+
+
 def test_invalid_values_raise():
     with pytest.raises(ConfigError, match="CHUNK_STRATEGY"):
         load_settings({"NVIDIA_API_KEY": "k", "CHUNK_STRATEGY": "bogus"})

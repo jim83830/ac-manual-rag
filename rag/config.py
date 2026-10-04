@@ -40,6 +40,7 @@ class Settings:
     ocr_max_side: int = 1600
     ocr_jpeg_quality: int = 85
     ocr_timeout: float = 360.0  # 視覺模型一頁可能要 3～4 分鐘
+    ocr_workers: int = 4  # 同時送出幾頁 OCR；瓶頸是等回應，不是限流
     chunk_strategy: str = "heading"
     chunk_max_chars: int = 800
     retrieve_k: int = 10
@@ -68,7 +69,12 @@ _STR_ENV = {
     "rerank_url": "RERANK_URL",
     "chunk_strategy": "CHUNK_STRATEGY",
 }
-_INT_ENV = {"chunk_max_chars": "CHUNK_MAX_CHARS", "retrieve_k": "RETRIEVE_K", "rerank_k": "RERANK_K"}
+_INT_ENV = {
+    "chunk_max_chars": "CHUNK_MAX_CHARS",
+    "retrieve_k": "RETRIEVE_K",
+    "rerank_k": "RERANK_K",
+    "ocr_workers": "OCR_WORKERS",
+}
 _FLOAT_ENV = {"rerank_threshold": "RERANK_THRESHOLD"}
 
 

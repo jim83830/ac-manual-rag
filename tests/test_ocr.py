@@ -1,3 +1,5 @@
+import dataclasses
+import threading
 from io import BytesIO
 
 from PIL import Image
@@ -72,6 +74,24 @@ def test_ocr_pages_writes_skips_and_reports_failures(tmp_path, settings):
     assert (out / "p02.md").read_text(encoding="utf-8") == "頁碼：1\n內容\n"
     assert (out / "p03.md").read_text(encoding="utf-8") == "人工修正過的內容\n"
     assert not (out / "p04.md").exists()
+
+
+class BarrierLLM:
+    """兩個 OCR 呼叫必須同時進行，Barrier 才會放行；循序執行會在 timeout 後失敗。"""
+
+    def __init__(self, parties):
+        self.barrier = threading.Barrier(parties, timeout=5)
+
+    def ocr_page(self, image_jpeg, prompt):
+        self.barrier.wait()
+        return "頁碼：1\n內容"
+
+
+def test_ocr_pages_runs_pages_concurrently(tmp_path, settings):
+    pages = make_pages(tmp_path, [2, 3])
+    report = ocr_pages(pages, tmp_path / "ocr", BarrierLLM(2), dataclasses.replace(settings, ocr_workers=2))
+    assert report.done == [2, 3]
+    assert report.failed == {}
 
 
 def test_ocr_pages_force_overwrites(tmp_path, settings):

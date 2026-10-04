@@ -5,6 +5,7 @@ OCR 結果存成 data/ocr/<doc_id>/pNN.md，可以人工修正；檔案已存在
 from __future__ import annotations
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
@@ -89,20 +90,32 @@ def parse_page_doc(text: str) -> PageDoc:
     return PageDoc(printed_page=printed_page, category=category, body=body)
 
 
+def _ocr_one(page: PageImage, llm, settings: Settings) -> tuple[str | None, str | None]:
+    """回傳 (文字, 錯誤訊息)，兩者只會有一個。"""
+    try:
+        image = encode_for_ocr(page.path, settings.ocr_max_side, settings.ocr_jpeg_quality)
+        return llm.ocr_page(image, OCR_PROMPT), None
+    except (LLMError, OSError) as exc:  # 一頁失敗不影響其他頁
+        return None, str(exc)
+
+
 def ocr_pages(pages: list[PageImage], out_dir: Path, llm, settings: Settings, force: bool = False) -> OcrReport:
     out_dir.mkdir(parents=True, exist_ok=True)
     report = OcrReport()
+    todo: list[PageImage] = []
     for page in pages:
-        target = out_dir / ocr_filename(page.pdf_page)
-        if target.exists() and not force:
+        if (out_dir / ocr_filename(page.pdf_page)).exists() and not force:
             report.skipped.append(page.pdf_page)
-            continue
-        try:
-            image = encode_for_ocr(page.path, settings.ocr_max_side, settings.ocr_jpeg_quality)
-            text = llm.ocr_page(image, OCR_PROMPT)
-        except (LLMError, OSError) as exc:  # 一頁失敗不影響其他頁
-            report.failed[page.pdf_page] = str(exc)
-            continue
-        target.write_text(clean_model_output(text), encoding="utf-8")
-        report.done.append(page.pdf_page)
+        else:
+            todo.append(page)
+
+    # 等回應時執行緒會放掉 GIL，所以多執行緒能讓多頁同時等
+    with ThreadPoolExecutor(max_workers=max(1, settings.ocr_workers)) as pool:
+        results = pool.map(lambda p: _ocr_one(p, llm, settings), todo)
+        for page, (text, error) in zip(todo, results):
+            if error is not None:
+                report.failed[page.pdf_page] = error
+                continue
+            (out_dir / ocr_filename(page.pdf_page)).write_text(clean_model_output(text), encoding="utf-8")
+            report.done.append(page.pdf_page)
     return report

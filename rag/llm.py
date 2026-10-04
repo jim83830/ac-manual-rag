@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import threading
 import time
 from collections.abc import Iterator
 from typing import Literal
@@ -40,17 +41,20 @@ class NvidiaClient:
         self._sleep = sleep
         self._monotonic = monotonic
         self._last_call: float | None = None
+        self._throttle_lock = threading.Lock()
 
     def _throttle(self) -> None:
         if self._min_interval <= 0:
             return
-        now = self._monotonic()
-        if self._last_call is not None:
-            wait = self._last_call + self._min_interval - now
-            if wait > 0:
-                self._sleep(wait)
-                now += wait
-        self._last_call = now
+        # 「讀上次時間 → 等待 → 更新」必須整段一次只讓一個執行緒做，否則並行 OCR 時會同時衝出去
+        with self._throttle_lock:
+            now = self._monotonic()
+            if self._last_call is not None:
+                wait = self._last_call + self._min_interval - now
+                if wait > 0:
+                    self._sleep(wait)
+                    now += wait
+            self._last_call = now
 
     def ocr_page(self, image_jpeg: bytes, prompt: str) -> str:
         b64 = base64.b64encode(image_jpeg).decode("ascii")
