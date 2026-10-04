@@ -4,6 +4,7 @@ OCR 結果存成 data/ocr/<doc_id>/pNN.md，可以人工修正；檔案已存在
 """
 from __future__ import annotations
 
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -90,6 +91,13 @@ def parse_page_doc(text: str) -> PageDoc:
     return PageDoc(printed_page=printed_page, category=category, body=body)
 
 
+def _write_atomic(target: Path, text: str) -> None:
+    """先寫暫存檔再改名：中途中斷時只會留下 .tmp，不會出現寫一半的 .md 被誤當成已完成。"""
+    tmp = target.with_name(target.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, target)
+
+
 def _ocr_one(page: PageImage, llm, settings: Settings) -> tuple[str | None, str | None]:
     """回傳 (文字, 錯誤訊息)，兩者只會有一個。"""
     try:
@@ -116,6 +124,6 @@ def ocr_pages(pages: list[PageImage], out_dir: Path, llm, settings: Settings, fo
             if error is not None:
                 report.failed[page.pdf_page] = error
                 continue
-            (out_dir / ocr_filename(page.pdf_page)).write_text(clean_model_output(text), encoding="utf-8")
+            _write_atomic(out_dir / ocr_filename(page.pdf_page), clean_model_output(text))
             report.done.append(page.pdf_page)
     return report

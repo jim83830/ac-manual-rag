@@ -1,7 +1,9 @@
 import dataclasses
+import os
 import threading
 from io import BytesIO
 
+import pytest
 from PIL import Image
 
 from rag.llm import LLMError
@@ -92,6 +94,17 @@ def test_ocr_pages_runs_pages_concurrently(tmp_path, settings):
     report = ocr_pages(pages, tmp_path / "ocr", BarrierLLM(2), dataclasses.replace(settings, ocr_workers=2))
     assert report.done == [2, 3]
     assert report.failed == {}
+
+
+def test_interrupted_write_leaves_no_partial_md(tmp_path, settings, monkeypatch):
+    def crash(src, dst):
+        raise OSError("模擬：寫完暫存檔後、改名前程式中斷")
+
+    monkeypatch.setattr(os, "replace", crash)
+    pages = make_pages(tmp_path, [3])
+    with pytest.raises(OSError):
+        ocr_pages(pages, tmp_path / "ocr", FakeLLM(ocr_results=["頁碼：1\n內容"]), settings)
+    assert not (tmp_path / "ocr" / "p03.md").exists()  # 下次重跑才不會誤以為已完成
 
 
 def test_ocr_pages_force_overwrites(tmp_path, settings):
