@@ -26,6 +26,9 @@ class Settings:
     api_key: str
     base_url: str = "https://integrate.api.nvidia.com/v1"
     vision_model: str = "google/gemma-4-31b-it"
+    # OCR 可改用其他 OpenAI 相容平台（例如 Google Gemini）；空字串＝沿用 base_url / api_key
+    vision_base_url: str = ""
+    vision_api_key: str = ""
     chat_model: str = "z-ai/glm-5.3-flash"
     # 推理型聊天模型的思考量；"low" 讓它少想一點、快一點。空字串＝不送這個參數
     chat_reasoning_effort: str = "low"
@@ -63,6 +66,8 @@ class Settings:
 
 _STR_ENV = {
     "vision_model": "VISION_MODEL",
+    "vision_base_url": "VISION_BASE_URL",
+    "vision_api_key": "VISION_API_KEY",
     "chat_model": "CHAT_MODEL",
     "embed_model": "EMBED_MODEL",
     "rerank_model": "RERANK_MODEL",

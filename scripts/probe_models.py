@@ -47,9 +47,21 @@ def main() -> int:
         print(f"❌ 無法列出模型（API key 是否正確？）：{exc}")
         return 1
 
-    for label, model in [("視覺", settings.vision_model), ("聊天", settings.chat_model), ("Embedding", settings.embed_model)]:
+    for label, model in [("聊天", settings.chat_model), ("Embedding", settings.embed_model)]:
         print(f"{'✅' if model in available else '⚠️ 不在模型清單'} {label}模型 {model}")
-    vision_candidates = sorted(m for m in available if any(k in m.lower() for k in ("vision", "vl", "vlm")))
+
+    if settings.vision_base_url:  # OCR 走另一個平台，要查那邊的清單
+        print(f"視覺模型使用另一個平台：{settings.vision_base_url}")
+        try:
+            vision_available = set(llm.list_models(vision=True))
+        except LLMError as exc:
+            print(f"❌ 無法列出視覺平台的模型（VISION_API_KEY 是否正確？）：{exc}")
+            return 1
+        vision_candidates = sorted(vision_available)
+    else:
+        vision_available = available
+        vision_candidates = sorted(m for m in available if any(k in m.lower() for k in ("vision", "vl", "vlm")))
+    print(f"{'✅' if settings.vision_model in vision_available else '⚠️ 不在模型清單'} 視覺模型 {settings.vision_model}")
     print("清單中的視覺模型候選：", ", ".join(vision_candidates) or "（找不到）")
 
     results = [

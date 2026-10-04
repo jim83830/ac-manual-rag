@@ -157,6 +157,54 @@ def test_ocr_uses_longer_timeout(settings):
     assert calls[0]["timeout"] == settings.ocr_timeout
 
 
+def fake_chat_client(calls, reply):
+    def create(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=reply))])
+
+    return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+
+
+def test_ocr_goes_to_vision_client_and_chat_to_main_client(settings):
+    main_calls, vision_calls = [], []
+    client = NvidiaClient(
+        settings,
+        openai_client=fake_chat_client(main_calls, "聊天"),
+        vision_client=fake_chat_client(vision_calls, "頁碼：9"),
+        http_client=httpx.Client(),
+    )
+    assert client.ocr_page(b"jpeg", "prompt") == "頁碼：9"
+    assert client.chat([{"role": "user", "content": "hi"}]) == "聊天"
+    assert [c["model"] for c in vision_calls] == [settings.vision_model]
+    assert [c["model"] for c in main_calls] == [settings.chat_model]
+
+
+def test_vision_client_built_from_vision_settings(settings):
+    custom = dataclasses.replace(
+        settings, vision_base_url="https://vision.example/v1/", vision_api_key="vision-key"
+    )
+    client = NvidiaClient(custom, openai_client=SimpleNamespace(), http_client=httpx.Client())
+    assert str(client._vision.base_url) == "https://vision.example/v1/"
+    assert client._vision.api_key == "vision-key"
+
+
+def test_list_models_can_query_vision_provider(settings):
+    def models(*ids):
+        return SimpleNamespace(models=SimpleNamespace(list=lambda: [SimpleNamespace(id=i) for i in ids]))
+
+    client = NvidiaClient(
+        settings, openai_client=models("b", "a"), vision_client=models("gemini-x"), http_client=httpx.Client()
+    )
+    assert client.list_models() == ["a", "b"]
+    assert client.list_models(vision=True) == ["gemini-x"]
+
+
+def test_vision_client_defaults_to_main_client(settings):
+    main = SimpleNamespace()
+    client = NvidiaClient(settings, openai_client=main, http_client=httpx.Client())
+    assert client._vision is main
+
+
 def test_min_interval_spaces_out_calls(settings):
     times = iter([10.0, 10.5])
     sleeps = []

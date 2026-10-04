@@ -26,6 +26,7 @@ class NvidiaClient:
         settings: Settings,
         *,
         openai_client=None,
+        vision_client=None,
         http_client: httpx.Client | None = None,
         min_interval: float = 0.0,
         sleep=time.sleep,
@@ -36,6 +37,18 @@ class NvidiaClient:
         self._openai = openai_client or OpenAI(
             base_url=settings.base_url, api_key=settings.api_key, max_retries=5, timeout=120
         )
+        # OCR 可以走另一個平台；沒設定就跟其他模型共用同一個 client
+        if vision_client is not None:
+            self._vision = vision_client
+        elif settings.vision_base_url:
+            self._vision = OpenAI(
+                base_url=settings.vision_base_url,
+                api_key=settings.vision_api_key or settings.api_key,
+                max_retries=5,
+                timeout=120,
+            )
+        else:
+            self._vision = self._openai
         self._http = http_client or httpx.Client(timeout=60)
         self._min_interval = min_interval
         self._sleep = sleep
@@ -66,7 +79,12 @@ class NvidiaClient:
             ],
         }]
         return self._complete(
-            self._s.vision_model, messages, max_tokens=4096, temperature=0.0, timeout=self._s.ocr_timeout
+            self._s.vision_model,
+            messages,
+            max_tokens=4096,
+            temperature=0.0,
+            timeout=self._s.ocr_timeout,
+            client=self._vision,
         )
 
     def chat(self, messages: list[dict], max_tokens: int = 1024) -> str:
@@ -104,11 +122,12 @@ class NvidiaClient:
         temperature: float,
         extra_body: dict | None = None,
         timeout: float | None = None,
+        client=None,
     ) -> str:
         self._throttle()
         options = {"timeout": timeout} if timeout else {}
         try:
-            response = self._openai.chat.completions.create(
+            response = (client or self._openai).chat.completions.create(
                 model=model,
                 messages=messages,
                 max_tokens=max_tokens,
@@ -150,9 +169,10 @@ class NvidiaClient:
         ranks = [(int(r["index"]), float(r["logit"])) for r in data["rankings"]]
         return sorted(ranks, key=lambda r: r[1], reverse=True)
 
-    def list_models(self) -> list[str]:
+    def list_models(self, vision: bool = False) -> list[str]:
+        client = self._vision if vision else self._openai
         try:
-            return sorted(model.id for model in self._openai.models.list())
+            return sorted(model.id for model in client.models.list())
         except OpenAIError as exc:
             raise LLMError(f"無法列出模型：{exc}") from exc
 

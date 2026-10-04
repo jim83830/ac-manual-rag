@@ -46,6 +46,23 @@ def test_ocr_workers_default_and_override():
     assert load_settings({"NVIDIA_API_KEY": "k", "OCR_WORKERS": "2"}).ocr_workers == 2
 
 
+def test_vision_provider_defaults_to_main_provider():
+    s = load_settings({"NVIDIA_API_KEY": "k"})
+    assert (s.vision_base_url, s.vision_api_key) == ("", "")
+
+
+def test_vision_provider_override():
+    s = load_settings({
+        "NVIDIA_API_KEY": "k",
+        "VISION_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "VISION_API_KEY": "g",
+        "VISION_MODEL": "gemini-x",
+    })
+    assert (s.vision_base_url, s.vision_api_key, s.vision_model) == (
+        "https://generativelanguage.googleapis.com/v1beta/openai/", "g", "gemini-x"
+    )
+
+
 def test_invalid_values_raise():
     with pytest.raises(ConfigError, match="CHUNK_STRATEGY"):
         load_settings({"NVIDIA_API_KEY": "k", "CHUNK_STRATEGY": "bogus"})

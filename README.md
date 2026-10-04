@@ -31,6 +31,9 @@
    ```
 5. 確認模型可用：`docker compose run --rm app python scripts/probe_models.py`
 
+OCR（視覺模型）可以單獨改用其他 OpenAI 相容平台，例如 Google Gemini：到 https://aistudio.google.com 取得免費 API key，
+在 `.env` 設定 `VISION_BASE_URL`、`VISION_API_KEY`、`VISION_MODEL`（範例見 `.env.example`）。聊天、embedding、rerank 仍走 NVIDIA。
+
 ## 常用指令
 
 | 做什麼 | 指令 |
