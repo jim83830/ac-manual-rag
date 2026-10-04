@@ -207,6 +207,25 @@ def test_vision_client_defaults_to_main_provider_without_retries(settings):
     assert client._vision.max_retries == 0  # OCR 預設不重試：失敗的頁面留給下次 ingest 補做
 
 
+def test_ocr_rejects_truncated_output(settings):
+    def create(**kwargs):
+        choice = SimpleNamespace(message=SimpleNamespace(content="## 長時間不使用時\n● 請在晴天時，進行"), finish_reason="length")
+        return SimpleNamespace(choices=[choice])
+
+    fake = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    client = NvidiaClient(settings, openai_client=SimpleNamespace(), vision_client=fake, http_client=httpx.Client())
+    with pytest.raises(LLMError, match="截斷"):
+        client.ocr_page(b"jpeg", "prompt")
+
+
+def test_ocr_allows_long_output(settings):
+    calls = []
+    fake = fake_chat_client(calls, "頁碼：9")
+    client = NvidiaClient(settings, openai_client=SimpleNamespace(), vision_client=fake, http_client=httpx.Client())
+    client.ocr_page(b"jpeg", "prompt")
+    assert calls[0]["max_tokens"] >= 16384  # 推理型模型的思考也算在上限內
+
+
 def test_min_interval_spaces_out_calls(settings):
     times = iter([10.0, 10.5])
     sleeps = []

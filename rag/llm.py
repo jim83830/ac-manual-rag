@@ -13,6 +13,7 @@ from openai import OpenAI, OpenAIError
 from rag.config import Settings
 
 EMBED_BATCH = 32
+OCR_MAX_TOKENS = 16384  # 推理型視覺模型的思考也算在上限內，要留足空間
 _RETRY_STATUS = {429, 500, 502, 503, 504}
 
 
@@ -76,10 +77,11 @@ class NvidiaClient:
         return self._complete(
             self._s.vision_model,
             messages,
-            max_tokens=4096,
+            max_tokens=OCR_MAX_TOKENS,
             temperature=0.0,
             timeout=self._s.ocr_timeout,
             client=self._vision,
+            reject_truncated=True,
         )
 
     def chat(self, messages: list[dict], max_tokens: int = 1024) -> str:
@@ -118,6 +120,7 @@ class NvidiaClient:
         extra_body: dict | None = None,
         timeout: float | None = None,
         client=None,
+        reject_truncated: bool = False,
     ) -> str:
         self._throttle()
         options = {"timeout": timeout} if timeout else {}
@@ -132,7 +135,11 @@ class NvidiaClient:
             )
         except OpenAIError as exc:
             raise LLMError(f"模型 {model} 呼叫失敗：{exc}") from exc
-        return response.choices[0].message.content or ""
+        choice = response.choices[0]
+        # 輸出碰到 max_tokens 上限時內容是不完整的，看起來卻像成功；OCR 寧可當失敗下次重做
+        if reject_truncated and getattr(choice, "finish_reason", None) == "length":
+            raise LLMError(f"模型 {model} 的輸出被截斷（超過 max_tokens），已捨棄")
+        return choice.message.content or ""
 
     def embed(self, texts: list[str], input_type: Literal["passage", "query"]) -> list[list[float]]:
         vectors: list[list[float]] = []
