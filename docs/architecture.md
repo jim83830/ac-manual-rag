@@ -12,17 +12,23 @@
 
 RAG 分兩個階段：
 
-```
-建索引（ingest，事先跑一次）                         問答（每次有人提問）
-┌───────────────────────────────┐                 ┌───────────────────────────────┐
-│ PDF → 頁面圖片        pdf.py   │                 │ 追問改寫           retrieve.py │
-│   → 視覺模型 OCR      ocr.py   │                 │   → 問題轉向量                 │
-│   → 切 chunk          chunk.py │   Chroma 向量庫  │   → 向量檢索 top 10            │
-│   → embedding                  │ ──────────────▶ │   → rerank 取 top 3            │
-│   → 存入 Chroma       store.py │                 │   → 門檻判斷                   │
-└───────────────────────────────┘                 │   → LLM 串流回答    answer.py  │
-                                                  │   → 找出引用頁面圖  service.py │
-                                                  └───────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph ingest["建索引（ingest，事先跑一次）"]
+        direction LR
+        PDF["PDF"] --> IMG["頁面圖片<br/>pdf.py"] --> OCR["視覺模型 OCR<br/>ocr.py"] --> CHUNK["切 chunk<br/>chunk.py"] --> EMB["embedding<br/>store.py"]
+    end
+
+    EMB --> DB[("Chroma 向量庫")]
+
+    subgraph query["問答（每次有人提問）"]
+        direction LR
+        Q["使用者問題"] --> RW["追問改寫<br/>retrieve.py"] --> VEC["向量檢索<br/>top 10"] --> RR["rerank<br/>取 top 3"] --> TH{"門檻判斷"}
+        TH -- 通過 --> GEN["LLM 串流回答<br/>answer.py"] --> PAGE["附上引用頁面圖<br/>service.py"]
+        TH -- 未通過 --> NF["回答：說明書裡找不到"]
+    end
+
+    DB --> VEC
 ```
 
 使用的模型（皆為免費 API，型號寫在 `rag/config.py`，可用 `.env` 覆寫）：
