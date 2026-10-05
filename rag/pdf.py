@@ -29,16 +29,18 @@ def is_blank(image: Image.Image, white_level: int = 245, min_white_ratio: float 
 
 
 def render_pages(pdf_path: Path, out_dir: Path, dpi: int) -> list[PageImage]:
+    """已經轉好的圖片不再重轉（改 DPI 時要先手動刪掉舊圖）。"""
     out_dir.mkdir(parents=True, exist_ok=True)
     pages: list[PageImage] = []
     pdf = pdfium.PdfDocument(str(pdf_path))
     try:
         for index in range(len(pdf)):
-            image = pdf[index].render(scale=dpi / 72).to_pil()
-            if is_blank(image):
-                continue
             path = out_dir / page_filename(index + 1)
-            image.save(path)
+            if not path.exists():
+                image = pdf[index].render(scale=dpi / 72).to_pil()
+                if is_blank(image):
+                    continue
+                image.save(path)
             pages.append(PageImage(pdf_page=index + 1, path=path))
     finally:
         pdf.close()
